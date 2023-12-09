@@ -1,0 +1,66 @@
+-- Common Table Expression (CTE) to gather product-related data
+WITH product_cte AS (
+  SELECT 
+    product.ProductID ProductID,
+    product.Name Product,
+    subcategory.Name Subcategory,
+    category.Name Category
+  FROM `tc-da-1.adwentureworks_db.product` product
+  INNER JOIN `tc-da-1.adwentureworks_db.productsubcategory` subcategory
+    ON product.ProductSubcategoryID=subcategory.ProductSubcategoryID
+  INNER JOIN `tc-da-1.adwentureworks_db.productcategory` category
+    ON subcategory.ProductCategoryID=category.ProductCategoryID
+),
+
+-- Common Table Expression (CTE) to gather sales-related data
+sales_cte AS (
+  SELECT
+    OrderDate,
+    SalesOrderID,
+    REGEXP_EXTRACT(Demographics, r'<TotalPurchaseYTD>([\d\.]+)</TotalPurchaseYTD>') as TotalPurchaseYTD,
+    RTRIM(REGEXP_EXTRACT(Demographics, r'<DateFirstPurchase>(.*)</DateFirstPurchase>'),'Z') as DateFirstPurchase,
+    RTRIM(REGEXP_EXTRACT(Demographics, r'<BirthDate>(.*)</BirthDate>'),'Z') as BirthDate,
+    REGEXP_EXTRACT(Demographics, r'<MaritalStatus>(.*)</MaritalStatus>') as MaritalStatus,
+    REGEXP_EXTRACT(Demographics, r'<YearlyIncome>(.*)</YearlyIncome>') as YearlyIncome,
+    REGEXP_EXTRACT(Demographics, r'<Gender>(.*)</Gender>') as Gender,
+    REGEXP_EXTRACT(Demographics, r'<TotalChildren>(.*)</TotalChildren>') as TotalChildren,
+    REGEXP_EXTRACT(Demographics, r'<NumberChildrenAtHome>(.*)</NumberChildrenAtHome>') as NumberChildrenAtHome,
+    REGEXP_EXTRACT(Demographics, r'<Education>(.*)</Education>') as Education,
+    REGEXP_EXTRACT(Demographics, r'<Occupation>(.*)</Occupation>') as Occupation,
+    REGEXP_EXTRACT(Demographics, r'<HomeOwnerFlag>(.*)</HomeOwnerFlag>') as HomeOwnerFlag,
+    REGEXP_EXTRACT(Demographics, r'<NumberCarsOwned>(.*)</NumberCarsOwned>') as NumberCarsOwned,
+    REGEXP_EXTRACT(Demographics, r'<CommuteDistance>(.*)</CommuteDistance>') as CommuteDistance
+  FROM `tc-da-1.adwentureworks_db.individual` individual
+  INNER JOIN `tc-da-1.adwentureworks_db.salesorderheader` salesorderheader
+    ON salesorderheader.ContactID=individual.ContactID
+)
+
+-- Final SELECT statement to retrieve relevant sales and product details
+SELECT 
+  OrderDate,
+  salesorderdetail.SalesOrderID,
+  LineTotal,
+  TotalPurchaseYTD,
+  DateFirstPurchase,
+  BirthDate,
+  MaritalStatus,
+  YearlyIncome,
+  Gender,
+  TotalChildren,
+  NumberChildrenAtHome,
+  Education,
+  Occupation,
+  HomeOwnerFlag,
+  NumberCarsOwned,
+  CommuteDistance,
+  Product,
+  Subcategory,
+  Category
+FROM 
+  `adwentureworks_db.salesorderdetail` salesorderdetail
+INNER JOIN 
+  sales_cte
+  ON salesorderdetail.SalesOrderID=sales_cte.SalesOrderID
+INNER JOIN 
+  product_cte
+  ON salesorderdetail.ProductID=product_cte.ProductID;
